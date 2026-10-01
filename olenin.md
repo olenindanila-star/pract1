@@ -136,7 +136,17 @@ banner "Works without ./"
 echo '// comment' > a.c
 echo 'x = 1' > b.py
 echo '/* comment */' > c.js
-for f in *.c *.js *.py; do case "$f" in *.py) p='^#';; *) p='^(//|/\*)';; esac; head -n 1 "$f" | grep -qE "$p" && echo "$f: есть комментарий" || echo "$f: нет комментария"; done
+for f in *.c *.js *.py; do
+    case "$f" in
+        *.py) p='^#' ;;
+        *)    p='^(//|/\*)' ;;
+    esac
+    if head -n 1 "$f" | grep -qE "$p"; then
+        echo "$f: есть комментарий"
+    else
+        echo "$f: нет комментария"
+    fi
+done
 ```
 Вывод:
 ```
