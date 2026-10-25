@@ -2,8 +2,12 @@
 
 import tkinter as tk
 
+from script import ScriptError, load_script
+
 WINDOW_SIZE = "800x500"
 FONT = ("Courier", 11)
+SCRIPT_STEP_MS = 300
+CLOSE_DELAY_MS = 500
 
 
 class EmulatorWindow:
@@ -50,7 +54,40 @@ class EmulatorWindow:
         line = self.entry.get()
         self.entry.delete(0, "end")
         if self.run_line(line):
-            self.root.after(500, self.root.destroy)
+            self.close()
+
+    def close(self):
+        """Закрыть окно эмулятора с небольшой задержкой."""
+        self.root.after(CLOSE_DELAY_MS, self.root.destroy)
+
+    def run_script(self, path):
+        """Загрузить стартовый скрипт и выполнить его команды по очереди.
+
+        Каждая команда показывается в окне вместе с выводом, как будто её
+        ввёл пользователь.
+
+        :param path: путь к стартовому скрипту
+        """
+        try:
+            commands = load_script(path)
+        except ScriptError as error:
+            self.write(str(error))
+            return
+        self.write(f"[DEBUG] Выполнение скрипта {path}")
+        self.root.after(SCRIPT_STEP_MS, self.run_next, commands)
+
+    def run_next(self, commands):
+        """Выполнить первую команду из списка и запланировать следующую.
+
+        :param commands: оставшиеся команды скрипта
+        """
+        if not commands:
+            self.write("[DEBUG] Скрипт выполнен")
+            return
+        if self.run_line(commands[0]):
+            self.close()
+            return
+        self.root.after(SCRIPT_STEP_MS, self.run_next, commands[1:])
 
     def start(self):
         """Запустить главный цикл окна."""
