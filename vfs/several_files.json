@@ -1,0 +1,13 @@
+{
+  "name": "several_files",
+  "root": {
+    "type": "dir",
+    "children": {
+      "readme.txt": {"type": "file", "content": "Hello from VFS!\n"},
+      "notes.txt": {"type": "file", "content": "line 1\nline 2\nline 3\n"},
+      "empty.txt": {"type": "file", "content": ""},
+      "data.bin": {"type": "file", "encoding": "base64",
+                   "content": "AAECAwQFBgc="}
+    }
+  }
+}

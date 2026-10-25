@@ -28,6 +28,7 @@
 | `ls [аргументы]` | заглушка: выводит `ls: аргументы [...]` |
 | `cd [аргументы]` | заглушка: выводит `cd: аргументы [...]` |
 | `exit` | закрывает окно эмулятора |
+| `vfs-info` | служебная: имя, размер и дерево VFS (с этапа 3) |
 
 ## Этап 2. Конфигурация
 
@@ -73,11 +74,75 @@
 [DEBUG]   --vfs    = /home/user/my_vfs
 [DEBUG]   --script = examples/startup_stage2.txt
 [DEBUG] Выполнение скрипта examples/startup_stage2.txt
-my_vfs:~$ ls
+my_deep:~$ ls
 ls: аргументы []
 ...
 [DEBUG] Скрипт выполнен
 ```
+
+## Этап 3. VFS
+
+Подключена виртуальная файловая система (VFS). Её источник — JSON-файл,
+путь к которому передаётся параметром `--vfs`.
+
+- Вся VFS хранится **только в памяти**, исходный JSON-файл не изменяется.
+- Двоичные данные файлов хранятся в формате **base64**.
+- Имя VFS берётся из поля `name` (или из имени файла) и показывается в
+  заголовке окна и в приглашении к вводу.
+- Ошибки загрузки (файл не найден, неверный JSON, неверная структура,
+  неверный base64) выводятся в окно; в этом случае используется пустая VFS.
+
+### Формат JSON-файла VFS
+
+```json
+{
+  "name": "my_vfs",
+  "root": {
+    "type": "dir",
+    "children": {
+      "readme.txt": {"type": "file", "content": "текст файла"},
+      "logo.bin": {"type": "file", "encoding": "base64",
+                   "content": "iVBORw0KGgo="},
+      "docs": {"type": "dir", "children": {}}
+    }
+  }
+}
+```
+
+| Поле | Описание |
+|---|---|
+| `name` | имя VFS (необязательно) |
+| `root` | корневой каталог (обязательно) |
+| `type` | `dir` — каталог, `file` — файл |
+| `children` | содержимое каталога: «имя → узел» |
+| `content` | содержимое файла (строка) |
+| `encoding` | `text` (по умолчанию) или `base64` для двоичных данных |
+
+### Примеры VFS (папка `vfs/`)
+
+| Файл | Описание |
+|---|---|
+| `minimal.json` | минимальная VFS: пустой корневой каталог |
+| `several_files.json` | несколько файлов, включая двоичный (base64) |
+| `deep.json` | 3+ уровня вложенности файлов и папок |
+| `broken.json` | повреждённый JSON (для проверки ошибки) |
+| `bad_format.json` | неверная структура (для проверки ошибки) |
+
+### Служебная команда `vfs-info`
+
+Выводит имя VFS, количество каталогов и файлов и дерево VFS.
+
+### Скрипты тестирования VFS
+
+| Скрипт | Что проверяет |
+|---|---|
+| `scripts/test_vfs_minimal.sh` | минимальная VFS |
+| `scripts/test_vfs_several_files.sh` | VFS с несколькими файлами |
+| `scripts/test_vfs_deep.sh` | VFS с 3+ уровнями вложенности |
+| `scripts/test_vfs_errors.sh` | ошибки загрузки VFS |
+
+Стартовый скрипт `examples/startup_stage3.txt` проверяет все команды,
+реализованные на этапах 1–3, включая работу с VFS и обработку ошибок.
 
 ## Структура проекта
 
@@ -89,6 +154,8 @@ ls: аргументы []
 | `src/shell_parser.py` | разбор строки команды (`parse_command`) |
 | `src/config.py` | параметры командной строки (`parse_args`, `Config`) |
 | `src/script.py` | загрузка стартового скрипта (`load_script`) |
+| `src/vfs.py` | загрузка VFS из JSON (`load_vfs`, `Vfs`, `VfsDir`, `VfsFile`) |
+| `vfs/` | примеры VFS в формате JSON |
 | `examples/` | стартовые скрипты эмулятора |
 | `scripts/` | скрипты ОС для запуска с разными параметрами |
 | `tests/` | модульные тесты (`unittest`) |
@@ -100,7 +167,7 @@ ls: аргументы []
   при незакрытой кавычке бросает `ParseError`.
 - `Shell.execute(line)` — разбирает строку, находит команду и выполняет её,
   возвращает `CommandResult(output, should_exit)`.
-- `Shell.prompt()` — строка приглашения, например `vfs:~$ `.
+- `Shell.prompt()` — строка приглашения, например `deep:~$ `.
 - `EmulatorWindow.run_line(line)` — выводит команду в окно, выполняет её
   и печатает результат.
 - `parse_args(argv)` — читает параметры `--vfs` и `--script`,
@@ -109,6 +176,14 @@ ls: аргументы []
 - `load_script(path)` — читает стартовый скрипт, убирает комментарии и
   пустые строки; при ошибке чтения бросает `ScriptError`.
 - `EmulatorWindow.run_script(path)` — выполняет команды скрипта по очереди.
+- `load_vfs(path)` — читает JSON-файл и строит VFS в памяти; при ошибке
+  бросает `VfsError`.
+- `build_node(name, data)` — рекурсивно строит каталог или файл VFS.
+- `decode_file(name, data)` — создаёт файл, декодируя base64 при
+  необходимости.
+- `count_nodes(directory)` — считает каталоги и файлы.
+- `tree_lines(directory)` — строки дерева каталогов для `vfs-info`.
+- `Shell.cmd_vfs_info(args)` — служебная команда `vfs-info`.
 
 ## Требования
 
@@ -120,7 +195,7 @@ ls: аргументы []
 
 ```
 ./run.sh
-./run.sh --vfs vfs/my_vfs --script examples/startup_stage2.txt
+./run.sh --vfs vfs/deep.json --script examples/startup_stage3.txt
 ```
 
 или
@@ -137,19 +212,44 @@ python3 -m unittest discover -s tests
 
 ## Пример работы
 
+Запуск: `./run.sh --vfs vfs/deep.json`
+
 ```
-vfs:~$ ls
+[DEBUG] Параметры запуска:
+[DEBUG]   --vfs    = vfs/deep.json
+[DEBUG]   --script = None
+[DEBUG] VFS 'deep' загружена: каталогов 5, файлов 5
+deep:~$ vfs-info
+VFS: deep
+Каталогов: 5, файлов: 5
+/
+  etc/
+    config.txt (11 байт)
+  home/
+    user/
+      My Documents/
+        photo.bin (8 байт)
+        report.txt (17 байт)
+      notes.txt (24 байт)
+  readme.txt (12 байт)
+  tmp/
+```
+
+Команды этапа 1:
+
+```
+deep:~$ ls
 ls: аргументы []
-vfs:~$ ls -l "My Folder"
+deep:~$ ls -l "My Folder"
 ls: аргументы ['-l', 'My Folder']
-vfs:~$ cd 'docs/my files'
+deep:~$ cd 'docs/my files'
 cd: аргументы ['docs/my files']
-vfs:~$ cd "unclosed
+deep:~$ cd "unclosed
 ошибка разбора: незакрытая кавычка
-vfs:~$ foo bar
+deep:~$ foo bar
 foo: команда не найдена
-vfs:~$ exit 1
+deep:~$ exit 1
 exit: лишние аргументы
-vfs:~$ exit
+deep:~$ exit
 Выход из эмулятора
 ```

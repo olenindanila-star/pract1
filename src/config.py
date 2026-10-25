@@ -1,10 +1,7 @@
 """Параметры командной строки эмулятора."""
 
 import argparse
-import os
 from dataclasses import dataclass
-
-DEFAULT_VFS_NAME = "vfs"
 
 
 @dataclass
@@ -18,13 +15,6 @@ class Config:
     vfs_path: str = None
     script_path: str = None
 
-    def vfs_name(self):
-        """Вернуть имя VFS: имя файла без расширения или имя по умолчанию."""
-        if not self.vfs_path:
-            return DEFAULT_VFS_NAME
-        base = os.path.basename(self.vfs_path)
-        return os.path.splitext(base)[0]
-
 
 def parse_args(argv=None):
     """Разобрать параметры командной строки.
@@ -35,7 +25,7 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description="Эмулятор командной оболочки UNIX с GUI")
     parser.add_argument("--vfs", dest="vfs_path",
-                        help="путь к физическому расположению VFS")
+                        help="путь к JSON-файлу VFS")
     parser.add_argument("--script", dest="script_path",
                         help="путь к стартовому скрипту")
     args = parser.parse_args(argv)

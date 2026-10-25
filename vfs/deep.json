@@ -1,0 +1,37 @@
+{
+  "name": "deep",
+  "root": {
+    "type": "dir",
+    "children": {
+      "readme.txt": {"type": "file", "content": "Root readme\n"},
+      "home": {
+        "type": "dir",
+        "children": {
+          "user": {
+            "type": "dir",
+            "children": {
+              "notes.txt": {"type": "file",
+                            "content": "one\ntwo\nthree\nfour\nfive\n"},
+              "My Documents": {
+                "type": "dir",
+                "children": {
+                  "report.txt": {"type": "file",
+                                 "content": "Quarterly report\n"},
+                  "photo.bin": {"type": "file", "encoding": "base64",
+                                "content": "iVBORw0KGgo="}
+                }
+              }
+            }
+          }
+        }
+      },
+      "etc": {
+        "type": "dir",
+        "children": {
+          "config.txt": {"type": "file", "content": "debug=true\n"}
+        }
+      },
+      "tmp": {"type": "dir", "children": {}}
+    }
+  }
+}

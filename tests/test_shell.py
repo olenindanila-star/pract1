@@ -7,6 +7,9 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from shell import Shell  # noqa: E402
+from vfs import load_vfs  # noqa: E402
+
+VFS_DIR = os.path.join(os.path.dirname(__file__), "..", "vfs")
 
 
 class ShellTest(unittest.TestCase):
@@ -44,6 +47,24 @@ class ShellTest(unittest.TestCase):
         """exit с аргументами — ошибка, эмулятор не закрывается."""
         result = self.shell.execute("exit 1")
         self.assertFalse(result.should_exit)
+
+    def test_default_vfs_name(self):
+        """Без VFS используется имя по умолчанию."""
+        self.assertEqual(self.shell.vfs_name, "vfs")
+        self.assertEqual(self.shell.prompt(), "vfs:~$ ")
+
+    def test_vfs_info(self):
+        """vfs-info показывает имя VFS и дерево каталогов."""
+        vfs = load_vfs(os.path.join(VFS_DIR, "deep.json"))
+        output = Shell(vfs).execute("vfs-info").output
+        self.assertIn("VFS: deep", output)
+        self.assertIn("Каталогов: 5, файлов: 5", output)
+        self.assertIn("      My Documents/", output)
+
+    def test_vfs_info_args(self):
+        """vfs-info с аргументами — ошибка."""
+        result = self.shell.execute("vfs-info x")
+        self.assertEqual(result.output, "vfs-info: лишние аргументы")
 
     def test_empty_line(self):
         """Пустая строка ничего не выводит."""

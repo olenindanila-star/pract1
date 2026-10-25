@@ -1,0 +1,9 @@
+{
+  "name": "bad_format",
+  "root": {
+    "type": "dir",
+    "children": {
+      "file.txt": {"type": "symlink", "content": "x"}
+    }
+  }
+}
